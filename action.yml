@@ -1,5 +1,5 @@
-name: 'Scanner.dev Detection Rule validator'
-description: 'Uses the scanner-cli tool to validate detection rule yamls'
+name: 'Validate Scanner.dev Detection Rules'
+description: 'Uses the scanner-cli tool to validate detection rule yamls in the repository'
 inputs:
   scanner_api_url:
     description: 'The API URL of your Scanner instance'
@@ -32,6 +32,6 @@ runs:
         INPUT_FILE: ${{ inputs.file }}
         INPUT_DIR: ${{ inputs.dir }}
         INPUT_RECURSIVE: ${{ inputs.recursive }}
-branding:
-  icon: 'file-text'
-  color: 'blue'
+# TODO: add branding
+# (https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#branding)
+# if we want to put on marketplace
