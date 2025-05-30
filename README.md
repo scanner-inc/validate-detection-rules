@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: scanner-inc/validate-detection-rules@0.0.1
+      - uses: scanner-inc/validate-detection-rules@v0.0.1
         with:
           scanner_api_url: '${{ secrets.SCANNER_API_URL }}'
           scanner_api_key: '${{ secrets.SCANNER_API_KEY }}'
