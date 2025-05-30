@@ -25745,14 +25745,15 @@ async function run() {
                             continue;
                         }
                         const relativePath = path.relative(process.cwd(), filePath);
-                        // Try to extract line and column numbers from error message
-                        const lineMatches = errorMsg.match(/line: (\d+)/g);
-                        const columnMatches = errorMsg.match(/column: (\d+)/g);
-                        const lineNumber = ((lineMatches === null || lineMatches === void 0 ? void 0 : lineMatches.length) === 1)
-                            ? parseInt(lineMatches[0].replace('line: ', ''))
+                        // Try to extract line and column numbers from error message (best effort -
+                        // if parsing fails, the annotation will still appear but without location links)
+                        const lineMatches = [...errorMsg.matchAll(/line: (\d+)/g)];
+                        const columnMatches = [...errorMsg.matchAll(/column: (\d+)/g)];
+                        const lineNumber = lineMatches.length > 0
+                            ? parseInt(lineMatches[lineMatches.length - 1][1])
                             : undefined;
-                        const columnNumber = ((columnMatches === null || columnMatches === void 0 ? void 0 : columnMatches.length) === 1)
-                            ? parseInt(columnMatches[0].replace('column: ', ''))
+                        const columnNumber = columnMatches.length > 0
+                            ? parseInt(columnMatches[columnMatches.length - 1][1])
                             : undefined;
                         core.error(`${relativePath}: ${errorMsg}`, {
                             file: relativePath,
