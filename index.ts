@@ -16,7 +16,7 @@ async function run(): Promise<void> {
 
     // Build scanner-cli command
     let command = 'scanner-cli validate';
-    
+
     // Add file arguments
     if (fileInput) {
       const files = fileInput.split(',').map(f => f.trim());
@@ -24,7 +24,7 @@ async function run(): Promise<void> {
         command += ` -f "${file}"`;
       }
     }
-    
+
     // Add directory arguments
     if (dirInput) {
       const dirs = dirInput.split(',').map(d => d.trim());
@@ -32,12 +32,12 @@ async function run(): Promise<void> {
         command += ` -d "${dir}"`;
       }
     }
-    
+
     // Add recursive flag
     if (recursive && dirInput) {
       command += ' -r';
     }
-    
+
     // Default to current directory if no files or dirs specified
     if (!fileInput && !dirInput) {
       command += ' -d . -r';
@@ -49,16 +49,16 @@ async function run(): Promise<void> {
       const result = execSync(command, {
         encoding: 'utf8'
       });
-      
+
       // If we get here, all files are valid
       core.info(result);
-      
+
     } catch (error: any) {
       // Show full stdout output
       if (error.stdout) {
         core.info(error.stdout);
       }
-      
+
       // Parse stdout to create individual file annotations
       if (error.stdout) {
         const lines = error.stdout.split('\n');
@@ -67,25 +67,26 @@ async function run(): Promise<void> {
           const match = line.match(/^(.+?): (.+)$/);
           if (match) {
             const [, filePath, errorMsg] = match;
-            
+
             // Skip "OK" messages - these are success cases
             if (errorMsg.trim() === 'OK') {
               continue;
             }
-            
+
             const relativePath = path.relative(process.cwd(), filePath);
-            
-            // Try to extract line and column numbers from error message
-            const lineMatches = errorMsg.match(/line: (\d+)/g);
-            const columnMatches = errorMsg.match(/column: (\d+)/g);
-            
-            const lineNumber = (lineMatches?.length === 1) 
-              ? parseInt(lineMatches[0].replace('line: ', '')) 
+
+            // Try to extract line and column numbers from error message (best effort -
+            // if parsing fails, the annotation will still appear but without location links)
+            const lineMatches = [...errorMsg.matchAll(/line: (\d+)/g)];
+            const columnMatches = [...errorMsg.matchAll(/column: (\d+)/g)];
+
+            const lineNumber = lineMatches.length > 0
+              ? parseInt(lineMatches[lineMatches.length - 1][1])
               : undefined;
-            const columnNumber = (columnMatches?.length === 1) 
-              ? parseInt(columnMatches[0].replace('column: ', '')) 
+            const columnNumber = columnMatches.length > 0
+              ? parseInt(columnMatches[columnMatches.length - 1][1])
               : undefined;
-            
+
             core.error(`${relativePath}: ${errorMsg}`, {
               file: relativePath,
               startLine: lineNumber,
@@ -94,7 +95,7 @@ async function run(): Promise<void> {
           }
         }
       }
-      
+
       // Set overall failure with stderr details
       core.setFailed(error.stderr || 'Detection rule validation failed');
     }
