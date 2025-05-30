@@ -1,8 +1,8 @@
-const core = require('@actions/core');
-const { execSync } = require('child_process');
-const path = require('path');
+import * as core from '@actions/core';
+import { execSync } from 'child_process';
+import * as path from 'path';
 
-async function run() {
+async function run(): Promise<void> {
   try {
     const apiUrl = core.getInput('scanner_api_url', { required: true });
     const apiKey = core.getInput('scanner_api_key', { required: true });
@@ -53,7 +53,7 @@ async function run() {
       // If we get here, all files are valid
       core.info(result);
       
-    } catch (error) {
+    } catch (error: any) {
       // Show full stdout output
       if (error.stdout) {
         core.info(error.stdout);
@@ -99,7 +99,7 @@ async function run() {
       core.setFailed(error.stderr || 'Detection rule validation failed');
     }
 
-  } catch (error) {
+  } catch (error: any) {
     core.setFailed(`Action failed: ${error.message}`);
   }
 }
