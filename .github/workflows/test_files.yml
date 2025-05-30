@@ -18,4 +18,4 @@ jobs:
         with:
           scanner_api_url: '${{ secrets.SCANNER_API_URL }}'
           scanner_api_key: '${{ secrets.SCANNER_API_KEY }}'
-          file: tests/test1.yml,tests/test10.yml
+          file: tests/test1.yml,tests/test2.yml

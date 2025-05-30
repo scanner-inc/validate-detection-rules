@@ -1,5 +1,5 @@
-name: 'YAML File Scanner'
-description: 'Iterates over all files in a repository and posts YAML file contents to an HTTP endpoint'
+name: 'Scanner.dev Detection Rule validator'
+description: 'Uses the scanner-cli tool to validate detection rule yamls'
 inputs:
   scanner_api_url:
     description: 'The API URL of your Scanner instance'
