@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: scanner-inc/validate-detection-rules@v0.1.0
+      - uses: scanner-inc/validate-detection-rules@v0.2.0
         with:
           scanner_api_url: '${{ secrets.SCANNER_API_URL }}'
           scanner_api_key: '${{ secrets.SCANNER_API_KEY }}'
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: scanner-inc/validate-detection-rules/test@v0.1.0
+      - uses: scanner-inc/validate-detection-rules/test@v0.2.0
         with:
           scanner_api_url: '${{ secrets.SCANNER_API_URL }}'
           scanner_api_key: '${{ secrets.SCANNER_API_KEY }}'
@@ -82,7 +82,7 @@ To prepare a release:
    - Validate action: `npm run build` (creates `dist/index.js`)
    - Test action: `npm run build:test` (creates `dist-test/index.js`)
 3. Commit the `dist/` and `dist-test/` folders: `git add dist dist-test && git commit -m "Build dist"`
-4. Tag the release: `git tag v0.1.0 && git push --tags`
+4. Tag the release: `git tag v0.2.0 && git push --tags`
 
 The bundled files contain all dependencies, so users don't need to install anything.
 
