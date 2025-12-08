@@ -1,0 +1,38 @@
+name: 'Test Scanner.dev Detection Rules'
+description: 'Uses the scanner-cli tool to test detection rule yamls in the repository'
+inputs:
+  scanner_api_url:
+    description: 'The API URL of your Scanner instance'
+    required: true
+  scanner_api_key:
+    description: 'Scanner API key'
+    required: true
+  file:
+    description: 'Detection rule file(s) - comma separated list of .yml or .yaml files'
+    required: false
+  dir:
+    description: 'Directory of detection rule files'
+    required: false
+  recursive:
+    description: 'Recursively search directory for valid YAML files'
+    required: false
+    default: 'true'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install scanner-cli
+      shell: bash
+      run: pip install --quiet scanner-cli
+    - name: Run tests
+      shell: bash
+      run: node ${{ github.action_path }}/../dist-test/index.js
+      env:
+        INPUT_SCANNER_API_URL: ${{ inputs.scanner_api_url }}
+        INPUT_SCANNER_API_KEY: ${{ inputs.scanner_api_key }}
+        INPUT_FILE: ${{ inputs.file }}
+        INPUT_DIR: ${{ inputs.dir }}
+        INPUT_RECURSIVE: ${{ inputs.recursive }}
+# TODO: add branding
+# (https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#branding)
+# if we want to put on marketplace
+
