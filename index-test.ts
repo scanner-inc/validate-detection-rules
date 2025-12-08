@@ -15,7 +15,7 @@ async function run(): Promise<void> {
     process.env.SCANNER_API_KEY = apiKey;
 
     // Build scanner-cli command
-    let command = 'scanner-cli test';
+    let command = 'scanner-cli run-tests';
 
     // Add file arguments
     if (fileInput) {
