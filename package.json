@@ -1,6 +1,6 @@
 {
   "name": "validate-detection-rules",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "GitHub Action validate scanner.dev detection rules in yaml files",
   "scripts": {
     "build": "ncc build index.ts -o dist"

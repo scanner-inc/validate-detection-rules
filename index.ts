@@ -4,18 +4,25 @@ import * as path from 'path';
 
 async function run(): Promise<void> {
   try {
+    const checkAction = core.getInput('check_action');
     const apiUrl = core.getInput('scanner_api_url', { required: true });
     const apiKey = core.getInput('scanner_api_key', { required: true });
     const fileInput = core.getInput('file');
     const dirInput = core.getInput('dir');
     const recursive = core.getInput('recursive') === 'true';
 
+    // Validate check_action input
+    if (checkAction !== 'validate_only' && checkAction !== 'validate_and_run_tests') {
+      throw new Error(`Invalid check_action: "${checkAction}". Must be "validate_only" or "validate_and_run_tests".`);
+    }
+
     // Set environment variables for scanner-cli
     process.env.SCANNER_API_URL = apiUrl;
     process.env.SCANNER_API_KEY = apiKey;
 
-    // Build scanner-cli command
-    let command = 'scanner-cli validate';
+    // Build scanner-cli command based on check_action
+    const baseCommand = checkAction === 'validate_and_run_tests' ? 'scanner-cli run-tests' : 'scanner-cli validate';
+    let command = baseCommand;
 
     // Add file arguments
     if (fileInput) {
@@ -60,6 +67,9 @@ async function run(): Promise<void> {
       }
 
       // Parse stdout to create individual file annotations
+      // TODO: this currently doesn't work for run-tests, only validate. Will
+      // probably add a flag like --machine-readable or --json to the CLI in
+      // order to support this better.
       if (error.stdout) {
         const lines = error.stdout.split('\n');
         for (const line of lines) {

@@ -1,6 +1,10 @@
 name: 'Validate Scanner.dev Detection Rules'
 description: 'Uses the scanner-cli tool to validate detection rule yamls in the repository'
 inputs:
+  check_action:
+    description: 'Action to perform: "validate_only" to validate rules, "validate_and_run_tests" to also run tests'
+    required: false
+    default: 'validate_only'
   scanner_api_url:
     description: 'The API URL of your Scanner instance'
     required: true
@@ -27,6 +31,7 @@ runs:
       shell: bash
       run: node ${{ github.action_path }}/dist/index.js
       env:
+        INPUT_CHECK_ACTION: ${{ inputs.check_action }}
         INPUT_SCANNER_API_URL: ${{ inputs.scanner_api_url }}
         INPUT_SCANNER_API_KEY: ${{ inputs.scanner_api_key }}
         INPUT_FILE: ${{ inputs.file }}

@@ -15,23 +15,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: scanner-inc/validate-detection-rules@v0.1.0
+      - uses: scanner-inc/validate-detection-rules@v0.2.0
         with:
-          scanner_api_url: '${{ secrets.SCANNER_API_URL }}'
-          scanner_api_key: '${{ secrets.SCANNER_API_KEY }}'
-          dir: 'rules'
+          check_action: "validate_and_run_tests"
+          scanner_api_url: "${{ secrets.SCANNER_API_URL }}"
+          scanner_api_key: "${{ secrets.SCANNER_API_KEY }}"
+          dir: "rules"
           recursive: true
 ```
 
 ## Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `scanner_api_url` | The API URL of your Scanner instance | Yes | - |
-| `scanner_api_key` | Scanner API key | Yes | - |
-| `file` | Detection rule file(s) - comma separated list | No | - |
-| `dir` | Directory of detection rule files | No | - |
-| `recursive` | Recursively search directory for valid YAML files | No | `true` |
+| Input             | Description                                                    | Required | Default         |
+| ----------------- | -------------------------------------------------------------- | -------- | --------------- |
+| `check_action`    | Action to perform: `validate_only` or `validate_and_run_tests` | No       | `validate_only` |
+| `scanner_api_url` | The API URL of your Scanner instance                           | Yes      | -               |
+| `scanner_api_key` | Scanner API key                                                | Yes      | -               |
+| `file`            | Detection rule file(s) - comma separated list                  | No       | -               |
+| `dir`             | Directory of detection rule files                              | No       | -               |
+| `recursive`       | Recursively search directory for valid YAML files              | No       | `true`          |
+
+### Check Action Modes
+
+- **`validate_only`** (default): Runs `scanner-cli validate` to check that detection rules are valid YAML and conform to the expected schema.
+- **`validate_and_run_tests`**: Runs `scanner-cli run-tests` to validate rules and also execute any embedded tests defined in the detection rules.
 
 If neither `file` nor `dir` is specified, the action will recursively scan the current directory (`.`).
 
@@ -39,7 +46,7 @@ See the [Scanner.dev CLI documentation](https://docs.scanner.dev/scanner/using-s
 
 ## How it works
 
-The action installs the scanner-cli tool and runs `scanner-cli validate` with the specified files, directories, and options. It creates individual GitHub annotations for each validation error, pointing to the exact file and line where issues are found.
+The action installs the scanner-cli tool and runs either `scanner-cli validate` or `scanner-cli run-tests` (depending on the `check_action` input) with the specified files, directories, and options. It creates individual GitHub annotations for each validation error, pointing to the exact file and line where issues are found.
 
 ## Development
 
@@ -51,4 +58,3 @@ To prepare a release:
 4. Tag the release: `git tag v0.1.0 && git push --tags`
 
 The bundled `dist/index.js` contains all dependencies, so users don't need to install anything.
-
