@@ -20,8 +20,6 @@ jobs:
           check_action: "validate_and_run_tests"
           scanner_api_url: "${{ secrets.SCANNER_API_URL }}"
           scanner_api_key: "${{ secrets.SCANNER_API_KEY }}"
-          dir: "rules"
-          recursive: true
 ```
 
 ## Inputs
@@ -40,7 +38,7 @@ jobs:
 - **`validate_only`** (default): Runs `scanner-cli validate` to check that detection rules are valid YAML and conform to the expected schema.
 - **`validate_and_run_tests`**: Runs `scanner-cli run-tests` to validate rules and also execute any embedded tests defined in the detection rules.
 
-If neither `file` nor `dir` is specified, the action will recursively scan the current directory (`.`).
+If neither `file` nor `dir` is specified, the action will recursively scan the current directory (`.`). We recommend using this behavior by default, as it matches the behavior of Scanner's Github sync logic.
 
 See the [Scanner.dev CLI documentation](https://docs.scanner.dev/scanner/using-scanner/beta-features/detection-rules-as-code/cli) for details on obtaining your API URL and key.
 
