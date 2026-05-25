@@ -25685,6 +25685,159 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(7484));
 const child_process_1 = __nccwpck_require__(5317);
 const path = __importStar(__nccwpck_require__(6928));
+function toValidateOutput(wire) {
+    return {
+        files: wire.files.map((f) => {
+            var _a, _b;
+            switch (f.status) {
+                case 'Valid':
+                    return {
+                        status: 'Valid',
+                        filePath: f.file_path,
+                        warning: (_a = f.warning) !== null && _a !== void 0 ? _a : undefined,
+                    };
+                case 'Invalid':
+                    return {
+                        status: 'Invalid',
+                        filePath: f.file_path,
+                        error: f.error,
+                        warning: (_b = f.warning) !== null && _b !== void 0 ? _b : undefined,
+                    };
+                case 'ExecutionError':
+                    return {
+                        status: 'ExecutionError',
+                        filePath: f.file_path,
+                        error: f.error,
+                    };
+                default:
+                    throw new Error(`Unknown validate file status: ${String(f.status)}`);
+            }
+        }),
+    };
+}
+function toRunTestsOutput(wire) {
+    return {
+        files: wire.files.map((f) => {
+            var _a, _b, _c, _d;
+            switch (f.status) {
+                case 'Passed':
+                    return {
+                        status: 'Passed',
+                        filePath: f.file_path,
+                        warning: (_a = f.warning) !== null && _a !== void 0 ? _a : undefined,
+                        tests: ((_b = f.tests) !== null && _b !== void 0 ? _b : []).map((t) => ({
+                            name: t.name,
+                            passed: t.status === 'Passed',
+                        })),
+                    };
+                case 'TestsFailed':
+                    return {
+                        status: 'TestsFailed',
+                        filePath: f.file_path,
+                        warning: (_c = f.warning) !== null && _c !== void 0 ? _c : undefined,
+                        tests: f.tests.map((t) => ({
+                            name: t.name,
+                            passed: t.status === 'Passed',
+                        })),
+                    };
+                case 'Invalid':
+                    return {
+                        status: 'Invalid',
+                        filePath: f.file_path,
+                        error: f.error,
+                        warning: (_d = f.warning) !== null && _d !== void 0 ? _d : undefined,
+                    };
+                case 'ExecutionError':
+                    return {
+                        status: 'ExecutionError',
+                        filePath: f.file_path,
+                        error: f.error,
+                    };
+                default:
+                    throw new Error(`Unknown run-tests file status: ${String(f.status)}`);
+            }
+        }),
+    };
+}
+// Best-effort extraction of line/column from a free-form error message so
+// GitHub annotations link to the failing location. The CLI's error strings
+// often embed e.g. `... at line: 12 column: 4`; if they don't, the annotation
+// still renders, just at file scope.
+function extractLineColumn(message) {
+    const lineMatches = [...message.matchAll(/line: (\d+)/g)];
+    const columnMatches = [...message.matchAll(/column: (\d+)/g)];
+    return {
+        line: lineMatches.length > 0
+            ? parseInt(lineMatches[lineMatches.length - 1][1])
+            : undefined,
+        column: columnMatches.length > 0
+            ? parseInt(columnMatches[columnMatches.length - 1][1])
+            : undefined,
+    };
+}
+function splitList(input) {
+    return input.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+}
+function buildTargetArgs(fileInput, dirInput, recursive) {
+    const args = [];
+    const files = splitList(fileInput);
+    for (const file of files) {
+        args.push('-f', file);
+    }
+    const dirs = splitList(dirInput);
+    for (const dir of dirs) {
+        args.push('-d', dir);
+    }
+    if (dirs.length > 0 && recursive) {
+        args.push('-r');
+    }
+    // Default to current directory if nothing was specified.
+    if (files.length === 0 && dirs.length === 0) {
+        args.push('-d', '.', '-r');
+    }
+    return args;
+}
+// `execFileSync`'s thrown error carries `stdout` / `stderr` properties that
+// `@types/node` doesn't expose on `Error`, and the runtime can hand back a
+// Buffer in some edge cases (e.g. when the child is killed by a signal
+// before encoding takes effect). `asString` is the only place that decides
+// what counts as a usable string — values that aren't `string` or `Buffer`
+// are normalized to `''`, so an unsound shape can't escape into the return.
+function asString(value) {
+    if (typeof value === 'string')
+        return value;
+    if (Buffer.isBuffer(value))
+        return value.toString('utf8');
+    return '';
+}
+// Runs scanner-cli with `--json`. `--json` guarantees structured stdout on
+// both success and failure (rule-level failures); the process exits non-zero
+// iff any file/test failed, which makes execFileSync throw with `error.stdout`
+// populated. Pre-flight errors (missing CLI, bad inputs) skip the JSON path
+// and surface on stderr — callers get `stdout: ''` and `threw: true` in that
+// case, and should fall back to plain failure reporting.
+function runCliJson(args) {
+    // `execFileSync` (no shell) prevents shell-metacharacter injection from
+    // `file` / `dir` inputs — each arg is passed verbatim to the binary's argv.
+    try {
+        const stdout = (0, child_process_1.execFileSync)('scanner-cli', args, { encoding: 'utf8' });
+        return { stdout, threw: false, stderr: '' };
+    }
+    catch (error) {
+        if (!(error instanceof Error)) {
+            return { stdout: '', threw: true, stderr: '' };
+        }
+        // Errors are objects, so widening to a string-keyed `unknown` record is
+        // sound. The runtime shape of `stdout` / `stderr` is then re-validated
+        // by `asString` — no unchecked claims about their types.
+        const extras = error;
+        return {
+            stdout: asString(extras.stdout),
+            threw: true,
+            stderr: asString(extras.stderr),
+        };
+    }
+}
 async function run() {
     try {
         const checkAction = core.getInput('check_action');
@@ -25693,92 +25846,154 @@ async function run() {
         const fileInput = core.getInput('file');
         const dirInput = core.getInput('dir');
         const recursive = core.getInput('recursive') === 'true';
-        // Validate check_action input
         if (checkAction !== 'validate_only' && checkAction !== 'validate_and_run_tests') {
             throw new Error(`Invalid check_action: "${checkAction}". Must be "validate_only" or "validate_and_run_tests".`);
         }
-        // Set environment variables for scanner-cli
         process.env.SCANNER_API_URL = apiUrl;
         process.env.SCANNER_API_KEY = apiKey;
-        // Build scanner-cli command based on check_action
-        const baseCommand = checkAction === 'validate_and_run_tests' ? 'scanner-cli run-tests' : 'scanner-cli validate';
-        let command = baseCommand;
-        // Add file arguments
-        if (fileInput) {
-            const files = fileInput.split(',').map(f => f.trim());
-            for (const file of files) {
-                command += ` -f "${file}"`;
-            }
+        const targetArgs = buildTargetArgs(fileInput, dirInput, recursive);
+        if (checkAction === 'validate_and_run_tests') {
+            runTests(targetArgs);
         }
-        // Add directory arguments
-        if (dirInput) {
-            const dirs = dirInput.split(',').map(d => d.trim());
-            for (const dir of dirs) {
-                command += ` -d "${dir}"`;
-            }
-        }
-        // Add recursive flag
-        if (recursive && dirInput) {
-            command += ' -r';
-        }
-        // Default to current directory if no files or dirs specified
-        if (!fileInput && !dirInput) {
-            command += ' -d . -r';
-        }
-        core.info(`Running: ${command}`);
-        try {
-            const result = (0, child_process_1.execSync)(command, {
-                encoding: 'utf8'
-            });
-            // If we get here, all files are valid
-            core.info(result);
-        }
-        catch (error) {
-            // Show full stdout output
-            if (error.stdout) {
-                core.info(error.stdout);
-            }
-            // Parse stdout to create individual file annotations
-            // TODO: this currently doesn't work for run-tests, only validate. Will
-            // probably add a flag like --machine-readable or --json to the CLI in
-            // order to support this better.
-            if (error.stdout) {
-                const lines = error.stdout.split('\n');
-                for (const line of lines) {
-                    // Look for lines with format: <filepath>: <error>
-                    const match = line.match(/^(.+?): (.+)$/);
-                    if (match) {
-                        const [, filePath, errorMsg] = match;
-                        // Skip "OK" messages - these are success cases
-                        if (errorMsg.trim() === 'OK') {
-                            continue;
-                        }
-                        const relativePath = path.relative(process.cwd(), filePath);
-                        // Try to extract line and column numbers from error message (best effort -
-                        // if parsing fails, the annotation will still appear but without location links)
-                        const lineMatches = [...errorMsg.matchAll(/line: (\d+)/g)];
-                        const columnMatches = [...errorMsg.matchAll(/column: (\d+)/g)];
-                        const lineNumber = lineMatches.length > 0
-                            ? parseInt(lineMatches[lineMatches.length - 1][1])
-                            : undefined;
-                        const columnNumber = columnMatches.length > 0
-                            ? parseInt(columnMatches[columnMatches.length - 1][1])
-                            : undefined;
-                        core.error(`${relativePath}: ${errorMsg}`, {
-                            file: relativePath,
-                            startLine: lineNumber,
-                            startColumn: columnNumber
-                        });
-                    }
-                }
-            }
-            // Set overall failure with stderr details
-            core.setFailed(error.stderr || 'Detection rule validation failed');
+        else {
+            runValidate(targetArgs);
         }
     }
     catch (error) {
-        core.setFailed(`Action failed: ${error.message}`);
+        const message = error instanceof Error ? error.message : String(error);
+        core.setFailed(`Action failed: ${message}`);
     }
+}
+function annotateFileError(filePath, message) {
+    const relativePath = path.relative(process.cwd(), filePath);
+    const { line, column } = extractLineColumn(message);
+    core.error(message, {
+        file: relativePath,
+        startLine: line,
+        startColumn: column,
+    });
+}
+function annotateFileWarning(filePath, message) {
+    const relativePath = path.relative(process.cwd(), filePath);
+    core.warning(message, { file: relativePath });
+}
+function runValidate(targetArgs) {
+    const args = ['validate', '--json', ...targetArgs];
+    core.info(`Running: scanner-cli ${args.join(' ')}`);
+    const { stdout, threw, stderr } = runCliJson(args);
+    if (!stdout) {
+        if (stderr)
+            core.info(stderr);
+        core.setFailed(stderr.trim() || 'scanner-cli validate failed');
+        return;
+    }
+    let output;
+    try {
+        output = toValidateOutput(JSON.parse(stdout));
+    }
+    catch (_a) {
+        core.info(stdout);
+        core.setFailed('scanner-cli validate did not emit valid JSON');
+        return;
+    }
+    let invalidCount = 0;
+    let executionErrorCount = 0;
+    for (const file of output.files) {
+        switch (file.status) {
+            case 'Valid':
+                if (file.warning)
+                    annotateFileWarning(file.filePath, file.warning);
+                break;
+            case 'Invalid':
+                if (file.warning)
+                    annotateFileWarning(file.filePath, file.warning);
+                invalidCount += 1;
+                annotateFileError(file.filePath, file.error);
+                break;
+            case 'ExecutionError':
+                executionErrorCount += 1;
+                annotateFileError(file.filePath, `Could not validate: ${file.error}`);
+                break;
+        }
+    }
+    if (threw || invalidCount > 0 || executionErrorCount > 0) {
+        core.setFailed(buildFailureSummary({ invalidCount, executionErrorCount }));
+        return;
+    }
+    core.info(`Validated ${output.files.length} file(s)`);
+}
+function buildFailureSummary(counts) {
+    const { invalidCount, executionErrorCount, testFailures = 0 } = counts;
+    const parts = [];
+    if (invalidCount > 0) {
+        parts.push(`${invalidCount} file${invalidCount === 1 ? '' : 's'} failed validation`);
+    }
+    if (executionErrorCount > 0) {
+        parts.push(`${executionErrorCount} file${executionErrorCount === 1 ? '' : 's'} could not be validated`);
+    }
+    if (testFailures > 0) {
+        parts.push(`${testFailures} test${testFailures === 1 ? '' : 's'} failed`);
+    }
+    return parts.join('; ') || 'scanner-cli exited non-zero';
+}
+function runTests(targetArgs) {
+    const args = ['run-tests', '--json', ...targetArgs];
+    core.info(`Running: scanner-cli ${args.join(' ')}`);
+    const { stdout, threw, stderr } = runCliJson(args);
+    if (!stdout) {
+        if (stderr)
+            core.info(stderr);
+        core.setFailed(stderr.trim() || 'scanner-cli run-tests failed');
+        return;
+    }
+    let output;
+    try {
+        output = toRunTestsOutput(JSON.parse(stdout));
+    }
+    catch (_a) {
+        core.info(stdout);
+        core.setFailed('scanner-cli run-tests did not emit valid JSON');
+        return;
+    }
+    let invalidCount = 0;
+    let executionErrorCount = 0;
+    let testFailures = 0;
+    let totalTests = 0;
+    for (const file of output.files) {
+        switch (file.status) {
+            case 'Passed':
+                if (file.warning)
+                    annotateFileWarning(file.filePath, file.warning);
+                totalTests += file.tests.length;
+                break;
+            case 'TestsFailed':
+                if (file.warning)
+                    annotateFileWarning(file.filePath, file.warning);
+                totalTests += file.tests.length;
+                for (const test of file.tests) {
+                    if (!test.passed) {
+                        testFailures += 1;
+                        annotateFileError(file.filePath, `Test failed: ${test.name}`);
+                    }
+                }
+                break;
+            case 'Invalid':
+                if (file.warning)
+                    annotateFileWarning(file.filePath, file.warning);
+                invalidCount += 1;
+                annotateFileError(file.filePath, file.error);
+                break;
+            case 'ExecutionError':
+                executionErrorCount += 1;
+                annotateFileError(file.filePath, `Could not validate: ${file.error}`);
+                break;
+        }
+    }
+    if (threw || invalidCount > 0 || executionErrorCount > 0 || testFailures > 0) {
+        core.setFailed(buildFailureSummary({ invalidCount, executionErrorCount, testFailures }));
+        return;
+    }
+    core.info(`Ran ${totalTests} test(s) across ${output.files.length} file(s)`);
 }
 run();
 

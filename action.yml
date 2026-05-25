@@ -26,7 +26,7 @@ runs:
   steps:
     - name: Install scanner-cli
       shell: bash
-      run: pip install --quiet scanner-cli
+      run: pip install 'scanner-cli~=0.1.1'
     - name: Run validation
       shell: bash
       run: node ${{ github.action_path }}/dist/index.js

@@ -3,7 +3,8 @@
   "version": "0.2.0",
   "description": "GitHub Action validate scanner.dev detection rules in yaml files",
   "scripts": {
-    "build": "ncc build index.ts -o dist"
+    "build": "ncc build index.ts -o dist",
+    "gen_schema": "bash scripts/gen_schema.sh"
   },
   "keywords": [
     "github-action",
@@ -12,13 +13,14 @@
   ],
   "author": "",
   "license": "Apache-2.0",
+  "packageManager": "yarn@4.14.1",
   "dependencies": {
-    "@actions/core": "^1.10.1",
-    "@actions/glob": "^0.4.0"
+    "@actions/core": "^1.10.1"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@vercel/ncc": "^0.38.1",
-    "typescript": "^5.0.0",
-    "@types/node": "^20.0.0"
+    "json-schema-to-typescript": "^15.0.0",
+    "typescript": "^5.0.0"
   }
 }
